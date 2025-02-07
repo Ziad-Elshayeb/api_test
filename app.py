@@ -1,38 +1,38 @@
 from flask import Flask, request, jsonify
 import joblib
+import numpy as np
 
+
+# Load the trained model
+model = joblib.load("model.pkl")
+
+# Initialize Flask app
 app = Flask(__name__)
 
-# Load the pre-trained ML model
-try:
-    model = joblib.load('model.pkl')
-    print("Model loaded successfully!")
-except Exception as e:
-    print("Error loading model:", e)
-    model = None
+@app.route('/')
+def home():
+    return jsonify({"message": "ML Model API is running!"})
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    """
-    Expects a JSON payload with a key "data":
-      {
-        "data": [sepal_length, sepal_width, petal_length, petal_width]
-      }
-    Returns the model's prediction as JSON.
-    """
-    data = request.get_json()
-    if not data or 'data' not in data:
-        return jsonify({"error": "Invalid input. Expecting JSON with a 'data' key."}), 400
-
-    input_data = data['data']
     try:
-        # The model expects a 2D array: one sample per row.
-        prediction = model.predict([input_data])
-        # Convert the prediction to a standard Python type (e.g., int)
-        return jsonify({"prediction": int(prediction[0])})
-    except Exception as e:
-        return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
+        data = request.get_json()  # Ensure request is JSON
+        if data is None:
+            return jsonify({"error": "Empty request body"}), 400
 
+        # Extract features
+        features = np.array(data["features"]).reshape(1, -1)
+
+        # Make prediction
+        prediction = model.predict(features)
+        predicted_class = int(prediction[0])
+
+        return jsonify({"prediction": predicted_class})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Run the app
 if __name__ == '__main__':
-    # Run the Flask app on port 5000 (debug mode enabled for development)
     app.run(host='0.0.0.0', port=5000, debug=True)
